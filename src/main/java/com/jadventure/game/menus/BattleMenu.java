@@ -176,19 +176,34 @@ public class BattleMenu extends Menus {
         if (attacker.getHealth() == 0) {
             return;
         }
+
+        double damage = calculateDamage(attacker);
+
+        int healthReduction = calculateHealthReduction(attacker, defender, damage);
+        defender.setHealth(Math.max(0, defender.getHealth() - healthReduction));
+
+        logDamageDealt(healthReduction, defender, attacker);
+    }
+
+    private double calculateDamage(Entity attacker) {
         double damage = attacker.getDamage();
         double critCalc = random.nextDouble();
+
         if (critCalc < attacker.getCritChance()) {
-            damage += damage;
+            damage *= 2; // Double damage for critical hit
             QueueProvider.offer("Crit hit! Damage has been doubled!");
         }
-        int healthReduction = (int) ((((3 * attacker.getLevel() / 50 + 2) *
-                damage * damage / (defender.getArmour() + 1)/ 100) + 2) *
+
+        return damage;
+    }
+
+    private int calculateHealthReduction(Entity attacker, Entity defender, double damage) {
+        return (int) ((((3 * attacker.getLevel() / 50 + 2) *
+                damage * damage / (defender.getArmour() + 1) / 100) + 2) *
                 (random.nextDouble() + 1));
-        defender.setHealth((defender.getHealth() - healthReduction));
-        if (defender.getHealth() < 0) {
-            defender.setHealth(0);
-        }
+    }
+
+    private void logDamageDealt(int healthReduction, Entity defender, Entity attacker) {
         QueueProvider.offer(healthReduction + " damage dealt!");
         if (attacker instanceof Player) {
             QueueProvider.offer("The " + defender.getName() + "'s health is " +
