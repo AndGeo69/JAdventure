@@ -17,7 +17,7 @@ import com.jadventure.game.repository.ItemRepository;
 public abstract class Entity {
     // @Resource
     protected ItemRepository itemRepo = GameBeans.getItemRepository();
-    
+
     // All entities can attack, have health, have names
     private int healthMax;
     private int health;
@@ -34,28 +34,30 @@ public abstract class Entity {
     private double damage = 30;
     private double critChance = 0.0;
     private int armour;
-    private String weapon = "hands";
+    private String weapon = HANDS;
     private Map<EquipmentLocation, Item> equipment;
     protected Storage storage;
 
+    private static final String HANDS = "hands";
+
     public Entity() {
-    	this(100, 100, "default", 0, null, new HashMap<EquipmentLocation, Item>());
+        this(100, 100, "default", 0, null, new HashMap<EquipmentLocation, Item>());
     }
-    
+
     public Entity(int healthMax, int health, String name, int gold, Storage storage, Map<EquipmentLocation, Item> equipment) {
         this.healthMax = healthMax;
         this.health = health;
         this.name = name;
         this.gold = gold;
         if (storage != null) {
-        	this.storage = storage;
+            this.storage = storage;
         }
         else {
-        	this.storage = new Storage(300);
+            this.storage = new Storage(300);
         }
-	    this.equipment = equipment;
+        this.equipment = equipment;
     }
-    
+
 
     public int getHealth() {
         return this.health;
@@ -118,7 +120,7 @@ public abstract class Entity {
     public void setName(String name) {
         this.name = name;
     }
-     
+
     public void setIntro(String intro) {
         this.intro = intro;
     }
@@ -126,7 +128,7 @@ public abstract class Entity {
     public String getIntro() {
         return this.intro;
     }
-    
+
     public int getLevel() {
         return level;
     }
@@ -146,7 +148,7 @@ public abstract class Entity {
     public int getStrength() {
         return strength;
     }
-    
+
     public void setStrength(int strength) {
         this.strength = strength;
     }
@@ -158,7 +160,7 @@ public abstract class Entity {
     public void setIntelligence(int intelligence) {
         this.intelligence = intelligence;
     }
- 
+
     public int getDexterity() {
         return dexterity;
     }
@@ -200,57 +202,56 @@ public abstract class Entity {
             unequipTwoPlaces(EquipmentLocation.LEFT_HAND, EquipmentLocation.RIGHT_HAND);
         } else if (place == EquipmentLocation.BOTH_ARMS) {
             unequipTwoPlaces(EquipmentLocation.LEFT_ARM, EquipmentLocation.RIGHT_ARM);
-        } 
+        }
         Item bothHands = equipment.get(EquipmentLocation.BOTH_HANDS);
-        if (bothHands != null && (EquipmentLocation.LEFT_HAND == place || EquipmentLocation.RIGHT_HAND == place)) { 
+        if (bothHands != null && (EquipmentLocation.LEFT_HAND == place || EquipmentLocation.RIGHT_HAND == place)) {
             unequipItem(bothHands);
         }
         Item bothArms = equipment.get(EquipmentLocation.BOTH_ARMS);
-        if (bothArms != null && (place == EquipmentLocation.LEFT_ARM || place == EquipmentLocation.RIGHT_ARM)) { 
+        if (bothArms != null && (place == EquipmentLocation.LEFT_ARM || place == EquipmentLocation.RIGHT_ARM)) {
             unequipItem(bothArms);
         }
         equipment.put(place, item);
         removeItemFromStorage(item);
-        Map<String, String> result = new HashMap<String, String>();
+        Map<String, String> result = new HashMap<>();
         switch (item.getId().charAt(0)) {
             case 'w': {
                 this.weapon = item.getId();
-                this.damage += item.getProperty("damage");
+                this.damage += item.getProperty(UtilEnum.DAMAGE.toString());
                 double diffDamage = this.damage - oldDamage;
-                result.put("damage", String.valueOf(diffDamage));
+                result.put(UtilEnum.DAMAGE.toString(), String.valueOf(diffDamage));
                 break;
             }
             case 'a': {
-                this.armour += item.getProperty("armour");
+                this.armour += item.getProperty(UtilEnum.ARMOR.toString());
                 int diffArmour = this.armour - oldArmour;
-                result.put("armour", String.valueOf(diffArmour));
+                result.put(UtilEnum.ARMOR.toString(), String.valueOf(diffArmour));
                 break;
             }
             case 'p': {
-                if (item.containsProperty("healthMax")) {
+                if (item.containsProperty(UtilEnum.HEALTH_MAX.toString())) {
                     int healthOld = this.getHealth();
-                    this.healthMax += item.getProperty("healthMax");
-                    this.health += item.getProperty("health");
-                    this.health = (this.health > this.healthMax) ? this.healthMax : this.health;
+                    this.healthMax += item.getProperty(UtilEnum.HEALTH_MAX.toString());
+                    this.health += item.getProperty(UtilEnum.HEALTH.toString());
+                    this.health = Math.min(this.health, this.healthMax);
                     int healthNew = this.health;
                     unequipItem(item); // One use only
                     removeItemFromStorage(item);
                     if (healthNew != healthOld) {
-                        result.put("health", String.valueOf(health - healthOld));
+                        result.put(UtilEnum.HEALTH.toString(), String.valueOf(health - healthOld));
                     } else {
-                        result.put("health", String.valueOf(item.getProperty("healthMax")));
+                        result.put(UtilEnum.HEALTH.toString(), String.valueOf(item.getProperty(UtilEnum.HEALTH_MAX.toString())));
                     }
                 }
                 break;
             }
             case 'f': {
                 int healthOld = this.getHealth();
-                this.health += item.getProperty("health");
-                this.health = (this.health > this.healthMax) ? this.healthMax
-                        : this.health;
+                this.health += item.getProperty(UtilEnum.HEALTH.toString());
+                this.health = Math.min(this.health, this.healthMax);
                 unequipItem(item); // One use only
                 removeItemFromStorage(item);
-                result.put("health", String.valueOf(health - healthOld));
+                result.put(UtilEnum.HEALTH.toString(), String.valueOf(health - healthOld));
                 break;
             }
         }
@@ -263,7 +264,7 @@ public abstract class Entity {
         if (left != null) {
             unequipItem(left);
         }
-        if (right != null) { 
+        if (right != null) {
             unequipItem(right);
         }
     }
@@ -274,22 +275,22 @@ public abstract class Entity {
                 equipment.put(key, null);
             }
         }
-        if (!item.equals(itemRepo.getItem("hands"))) {
+        if (!item.equals(itemRepo.getItem(HANDS))) {
             addItemToStorage(item);
         }
         Map<String, String> result = new HashMap<String, String>();
-        if (item.containsProperty("damage")) {
+        if (item.containsProperty(UtilEnum.DAMAGE.toString())) {
             double oldDamage = damage;
-            weapon = "hands";
-            damage -= item.getProperty("damage");
+            weapon = HANDS;
+            damage -= item.getProperty(UtilEnum.DAMAGE.toString());
             double diffDamage = damage - oldDamage;
-            result.put("damage", String.valueOf(diffDamage));
-        } 
-        if (item.containsProperty("armour")) {
+            result.put(UtilEnum.DAMAGE.toString(), String.valueOf(diffDamage));
+        }
+        if (item.containsProperty(UtilEnum.ARMOR.toString())) {
             int oldArmour = armour;
-            armour -= item.getProperty("armour");
+            armour -= item.getProperty(UtilEnum.ARMOR.toString());
             int diffArmour = armour - oldArmour;
-            result.put("armour", String.valueOf(diffArmour));
+            result.put(UtilEnum.ARMOR.toString(), String.valueOf(diffArmour));
         }
         return result;
     }
@@ -301,7 +302,7 @@ public abstract class Entity {
             QueueProvider.offer("--Empty--");
         } else {
             int i = 0;
-            Item hands = itemRepo.getItem("hands");
+            Item hands = itemRepo.getItem(HANDS);
             Map<EquipmentLocation, String> locations = new HashMap<>();
             locations.put(EquipmentLocation.HEAD, "Head");
             locations.put(EquipmentLocation.CHEST, "Chest");
@@ -324,7 +325,7 @@ public abstract class Entity {
                 QueueProvider.offer("--Empty--");
             }
         }
-        QueueProvider.offer("------------------------------------------------------------"); 
+        QueueProvider.offer("------------------------------------------------------------");
     }
 
     public Storage getStorage() {
@@ -336,15 +337,15 @@ public abstract class Entity {
     }
 
     public void printStorage() {
-       storage.display();
-    } 
-    
+        storage.display();
+    }
+
     public void addItemToStorage(Item item) {
         storage.addItem(new ItemStack(1, item));
     }
 
     public void removeItemFromStorage(Item item) {
-        storage.removeItem(new ItemStack(1, item)); 
+        storage.removeItem(new ItemStack(1, item));
     }
 
 }

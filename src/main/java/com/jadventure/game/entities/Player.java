@@ -110,15 +110,15 @@ public class Player extends Entity {
             Reader reader = new FileReader(fileName);
             JsonObject json = parser.parse(reader).getAsJsonObject();
             player.setName(json.get("name").getAsString());
-            player.setHealthMax(json.get("healthMax").getAsInt());
-            player.setHealth(json.get("health").getAsInt());
-            player.setArmour(json.get("armour").getAsInt());
-            player.setDamage(json.get("damage").getAsInt());
-            player.setLevel(json.get("level").getAsInt());
+            player.setHealthMax(json.get(UtilEnum.HEALTH_MAX.toString()).getAsInt());
+            player.setHealth(json.get(UtilEnum.HEALTH.toString()).getAsInt());
+            player.setArmour(json.get(UtilEnum.ARMOR.toString()).getAsInt());
+            player.setDamage(json.get(UtilEnum.DAMAGE.toString()).getAsInt());
+            player.setLevel(json.get(UtilEnum.LEVEL.toString()).getAsInt());
             player.setXP(json.get("xp").getAsInt());
             player.setStrength(json.get("strength").getAsInt());
-            player.setIntelligence(json.get("intelligence").getAsInt());
-            player.setDexterity(json.get("dexterity").getAsInt());
+            player.setIntelligence(json.get(UtilEnum.INTELLIGENCE.toString()).getAsInt());
+            player.setDexterity(json.get(UtilEnum.DEXTERITY.toString()).getAsInt());
             player.setLuck(json.get("luck").getAsInt());
             player.setStealth(json.get("stealth").getAsInt());
             player.setCurrentCharacterType(json.get("type").getAsString());
@@ -145,8 +145,8 @@ public class Player extends Entity {
                }
                player.setEquipment(equipmentMap);
             }
-            if (json.has("items")) {
-                HashMap<String, Integer> items = new Gson().fromJson(json.get("items"), new TypeToken<HashMap<String, Integer>>(){}.getType());
+            if (json.has(UtilEnum.ITEMS.toString())) {
+                HashMap<String, Integer> items = new Gson().fromJson(json.get(UtilEnum.ITEMS.toString()), new TypeToken<HashMap<String, Integer>>(){}.getType());
                 ArrayList<ItemStack> itemList = new ArrayList<>();
                 for (Map.Entry<String, Integer> entry : items.entrySet()) {
                     String itemID = entry.getKey();
@@ -190,17 +190,17 @@ public class Player extends Entity {
             }
 
             player.setName(json.get("name").getAsString());
-            player.setHealthMax(json.get("healthMax").getAsInt());
-            player.setHealth(json.get("health").getAsInt());
-            player.setArmour(json.get("armour").getAsInt());
-            player.setDamage(json.get("damage").getAsInt());
-            player.setLevel(json.get("level").getAsInt());
+            player.setHealthMax(json.get(UtilEnum.HEALTH_MAX.toString()).getAsInt());
+            player.setHealth(json.get(UtilEnum.HEALTH.toString()).getAsInt());
+            player.setArmour(json.get(UtilEnum.ARMOR.toString()).getAsInt());
+            player.setDamage(json.get(UtilEnum.DAMAGE.toString()).getAsInt());
+            player.setLevel(json.get(UtilEnum.LEVEL.toString()).getAsInt());
             player.setXP(json.get("xp").getAsInt());
             player.setStrength(json.get("strength").getAsInt());
-            player.setIntelligence(json.get("intelligence").getAsInt());
-            player.setDexterity(json.get("dexterity").getAsInt());
+            player.setIntelligence(json.get(UtilEnum.INTELLIGENCE.toString()).getAsInt());
+            player.setDexterity(json.get(UtilEnum.DEXTERITY.toString()).getAsInt());
             setUpVariables(player);
-            JsonArray items = json.get("items").getAsJsonArray();
+            JsonArray items = json.get(UtilEnum.ITEMS.toString()).getAsJsonArray();
             for (JsonElement item : items) {
                 player.addItemToStorage(itemRepo.getItem(item.getAsString()));
             }
@@ -270,15 +270,15 @@ public class Player extends Entity {
         Gson gson = new Gson();
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("name", getName());
-        jsonObject.addProperty("healthMax", getHealthMax());
-        jsonObject.addProperty("health", getHealthMax());
-        jsonObject.addProperty("armour", getArmour());
-        jsonObject.addProperty("damage", getDamage());
-        jsonObject.addProperty("level", getLevel());
+        jsonObject.addProperty(UtilEnum.HEALTH_MAX.toString(), getHealthMax());
+        jsonObject.addProperty(UtilEnum.HEALTH.toString(), getHealthMax());
+        jsonObject.addProperty(UtilEnum.ARMOR.toString(), getArmour());
+        jsonObject.addProperty(UtilEnum.DAMAGE.toString(), getDamage());
+        jsonObject.addProperty(UtilEnum.LEVEL.toString(), getLevel());
         jsonObject.addProperty("xp", getXP());
         jsonObject.addProperty("strength", getStrength());
-        jsonObject.addProperty("intelligence", getIntelligence());
-        jsonObject.addProperty("dexterity", getDexterity());
+        jsonObject.addProperty(UtilEnum.INTELLIGENCE.toString(), getIntelligence());
+        jsonObject.addProperty(UtilEnum.DEXTERITY.toString(), getDexterity());
         jsonObject.addProperty("luck", getLuck());
         jsonObject.addProperty("stealth", getStealth());
         jsonObject.addProperty("weapon", getWeapon());
