@@ -34,9 +34,10 @@ import java.util.Random;
 public enum CommandCollection {
     INSTANCE;
 
-    private Logger logger = LoggerFactory.getLogger(CommandCollection.class);
+    private final Logger logger = LoggerFactory.getLogger(CommandCollection.class);
 
-    public Player player;
+    private static Player player;
+    private static final Random random = new Random();
 
     private final static Map<String, String> DIRECTION_LINKS = new HashMap<>();
     static {
@@ -53,60 +54,64 @@ public enum CommandCollection {
     }
 
     public void initPlayer(Player player) {
-        this.player = player;
+        CommandCollection.player = player;
     }
 
     // command methods here
 
-    @Command(command="help", aliases="h", description="Prints help", debug=false)
+    @Command(command = "help", aliases = "h", description = "Prints help", debug = false)
     public void command_help() {
         Method[] methods = CommandCollection.class.getMethods();
         int commandWidth = 0;
         int descriptionWidth = 0;
         QueueProvider.offer("");
+
         for (Method method : methods) {
-            if (!method.isAnnotationPresent(Command.class)) {
-                continue;
-            }
-            Command annotation = method.getAnnotation(Command.class);
-            String command = annotation.command() + "( " + Arrays.toString(annotation.aliases()) + "):";
-            String description = annotation.description();
-            if (command.length() > commandWidth) {
-                commandWidth = command.length();
-            }
-            if (description.length() > descriptionWidth) {
-                descriptionWidth = description.length();
+            if (method.isAnnotationPresent(Command.class)) {
+                Command annotation = method.getAnnotation(Command.class);
+                int currentCommandWidth = calculateCommandWidth(annotation);
+                int currentDescriptionWidth = annotation.description().length();
+
+                commandWidth = Math.max(commandWidth, currentCommandWidth);
+                descriptionWidth = Math.max(descriptionWidth, currentDescriptionWidth);
             }
         }
+
         for (Method method : methods) {
-            if (!method.isAnnotationPresent(Command.class)) {
-                continue;
-            }
-            Command annotation = method.getAnnotation(Command.class);
-            StringBuilder command;
-            command = new StringBuilder(annotation.command());
-            if (annotation.aliases().length > 0) {
-                command.append(" (");
-                for (int i = 0; i < annotation.aliases().length; i++) {
-                    if (i == annotation.aliases().length - 1)
-                        command.append(annotation.aliases()[i]);
-                    else
-                        command.append(annotation.aliases()[i]).append(", ");
-                }
-                command.append("):");
-            }
-            String message = String.format("%-" +commandWidth + "s %-" + descriptionWidth + "s", 
-                    command, 
-                    annotation.description());
-            if (annotation.debug()) {
-                if ("test".equals(player.getName())) {
+            if (method.isAnnotationPresent(Command.class)) {
+                Command annotation = method.getAnnotation(Command.class);
+                String formattedCommand = formatCommand(annotation);
+                String message = String.format("%-" + commandWidth + "s %-" + descriptionWidth + "s",
+                        formattedCommand,
+                        annotation.description());
+
+                if (shouldDisplayMessage(annotation)) {
                     QueueProvider.offer(message);
                 }
-            } else {
-                QueueProvider.offer(message);
-                
             }
         }
+    }
+
+    private int calculateCommandWidth(Command annotation) {
+        String command = annotation.command();
+        if (annotation.aliases().length > 0) {
+            command += " (" + String.join(", ", annotation.aliases()) + "):";
+        }
+        return command.length();
+    }
+
+    private String formatCommand(Command annotation) {
+        StringBuilder command = new StringBuilder(annotation.command());
+
+        if (annotation.aliases().length > 0) {
+            command.append(" (").append(String.join(", ", annotation.aliases())).append("):");
+        }
+
+        return command.toString();
+    }
+
+    private boolean shouldDisplayMessage(Command annotation) {
+        return !annotation.debug() || ("test".equals(player.getName()) && annotation.debug());
     }
 
     @Command(command="save", aliases={"s"}, description="Save the game", debug=false)
@@ -130,56 +135,88 @@ public enum CommandCollection {
         }
     }
 
-    @Command(command="go", aliases={"g"}, description="Goto a direction", debug=false)
+    @Command(command = "go", aliases = {"g"}, description = "Goto a direction", debug = false)
     public void command_g(String arg) throws DeathException {
-        ILocation location = player.getLocation();
-
         try {
             arg = DIRECTION_LINKS.get(arg);
             Direction direction = Direction.valueOf(arg.toUpperCase());
-            Map<Direction, ILocation> exits = location.getExits();
-            if (exits.containsKey(direction)) {
-                ILocation newLocation = exits.get(Direction.valueOf(arg.toUpperCase()));
-                if (!newLocation.getLocationType().equals(LocationType.WALL)) {
-                    player.setLocation(newLocation);
-                    if ("test".equals(player.getName())) {
-                        QueueProvider.offer(player.getLocation().getCoordinate().toString());
-                    }
-                    player.getLocation().print();
-                    Random random = new Random();
-                    if (player.getLocation().getMonsters().size() == 0) {
-                        MonsterFactory monsterFactory = new MonsterFactory();
-                        int upperBound = random.nextInt(player.getLocation().getDangerRating() + 1);
-                        for (int i = 0; i < upperBound; i++) {
-                            Monster monster = monsterFactory.generateMonster(player);
-                            player.getLocation().addMonster(monster);
-                        }
-                    }
-                    if (player.getLocation().getItems().size() == 0) {
-                        int chance = random.nextInt(100);
-                        if (chance < 60) {
-                            addItemToLocation();
-                        }
-                    }
-                    if (random.nextDouble() < 0.5) {
-                        List<Monster> monsters = player.getLocation().getMonsters();
-                        if (monsters.size() > 0) {
-                            int posMonster = random.nextInt(monsters.size());
-                            String monster = monsters.get(posMonster).monsterType;
-                            QueueProvider.offer("A " + monster + " is attacking you!");
-                            player.attack(monster);
-                        }
-                    }
-                } else {
-                    QueueProvider.offer("You cannot walk through walls.");
-                }
-            } else {
-                QueueProvider.offer("The is no exit that way.");
-            }
+            movePlayer(direction);
         } catch (IllegalArgumentException | NullPointerException ex) {
             QueueProvider.offer("That direction doesn't exist");
         }
     }
+
+    private void movePlayer(Direction direction) throws DeathException {
+        ILocation location = player.getLocation();
+        Map<Direction, ILocation> exits = location.getExits();
+
+        if (!exits.containsKey(direction)) {
+            QueueProvider.offer("There is no exit that way.");
+            return;
+        }
+
+        ILocation newLocation = exits.get(direction);
+
+        if (!isValidMove(newLocation)) {
+            QueueProvider.offer("You cannot walk through walls.");
+            return;
+        }
+
+        updatePlayerLocation(newLocation);
+        handleLocationEvents();
+    }
+
+    private boolean isValidMove(ILocation newLocation) {
+        return !newLocation.getLocationType().equals(LocationType.WALL);
+    }
+
+    private void updatePlayerLocation(ILocation newLocation) {
+        player.setLocation(newLocation);
+
+        if ("test".equals(player.getName())) {
+            QueueProvider.offer(player.getLocation().getCoordinate().toString());
+        }
+
+        player.getLocation().print();
+    }
+
+    private void handleLocationEvents() throws DeathException {
+
+        if (player.getLocation().getMonsters().size() == 0) {
+            spawnMonsters(random);
+        }
+
+        if (player.getLocation().getItems().size() == 0) {
+            int chance = random.nextInt(100);
+            if (chance < 60) {
+                addItemToLocation();
+            }
+        }
+
+        if (random.nextDouble() < 0.5) {
+            attackRandomMonster();
+        }
+    }
+
+    private void spawnMonsters(Random random) {
+        MonsterFactory monsterFactory = new MonsterFactory();
+        int upperBound = random.nextInt(player.getLocation().getDangerRating() + 1);
+        for (int i = 0; i < upperBound; i++) {
+            Monster monster = monsterFactory.generateMonster(player);
+            player.getLocation().addMonster(monster);
+        }
+    }
+
+    private void attackRandomMonster() throws DeathException {
+        List<Monster> monsters = player.getLocation().getMonsters();
+        if (monsters.size() > 0) {
+            int posMonster = random.nextInt(monsters.size());
+            String monster = monsters.get(posMonster).monsterType;
+            QueueProvider.offer("A " + monster + " is attacking you!");
+            player.attack(monster);
+        }
+    }
+
 
     @Command(command="inspect", aliases = {"i", "lookat"}, description="Inspect an item", debug=false)
     public void command_i(String arg) {
@@ -325,8 +362,7 @@ public enum CommandCollection {
         if (player.getHealth() < player.getHealthMax()/3) {
             player.getLocation().addItem(itemRepo.getRandomFood(player.getLevel()));
         } else {
-            Random rand = new Random();
-            int startIndex = rand.nextInt(3);
+            int startIndex = random.nextInt(3);
             switch (startIndex) {
                 case 0:
                     player.getLocation().addItem(itemRepo.getRandomWeapon(player.getLevel()));
@@ -340,7 +376,9 @@ public enum CommandCollection {
                 case 3:
                     player.getLocation().addItem(itemRepo.getRandomPotion(player.getLevel()));
                     break;
-             }
+                default:
+                    throw new IllegalStateException("Unexpected value: " + startIndex);
+            }
         }
     }
 }
