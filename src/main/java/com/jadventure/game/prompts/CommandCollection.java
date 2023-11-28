@@ -14,6 +14,7 @@ import com.jadventure.game.navigation.ILocation;
 import com.jadventure.game.navigation.LocationType;
 import com.jadventure.game.repository.ItemRepository;
 import com.jadventure.game.repository.LocationRepository;
+import com.jadventure.game.repository.NpcRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -342,7 +343,7 @@ public enum CommandCollection {
 
     @Command(command="talk", aliases={"t", "speakto"}, description="Talks to a character.", debug=false)
     public void command_talk(String arg) throws DeathException {
-        ConversationManager cm = new ConversationManager();
+        ConversationManager cm = new ConversationManager(NpcRepository.createRepo());
         List<NPC> npcs = player.getLocation().getNpcs();
         NPC npc = null;
         for (NPC i : npcs) {

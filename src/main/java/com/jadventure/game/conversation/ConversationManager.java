@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class ConversationManager {
-    private static NpcRepository npcRepository = NpcRepository.createRepo();
+    private static NpcRepository npcRepository;
     private static ConversationManager instance = null;
     private Map<NPC, List<Line>> lines = new HashMap<NPC, List<Line>>();
     private static final Map<String, ActionType> ACTION_TYPE_MAP = new HashMap<>();
@@ -49,13 +49,15 @@ public class ConversationManager {
         CONDITION_TYPE_MAP.put("char type", ConditionType.CHAR_TYPE);
     }
 
-    public ConversationManager() {
-       load(); 
-    } 
+    public ConversationManager(NpcRepository npcRepository) {
+        this.npcRepository = npcRepository;
+        this.lines = new HashMap<>();
+        load();
+    }
 
     public static ConversationManager getInstance() {
         if (instance == null) {
-            instance = new ConversationManager();
+            instance = new ConversationManager(NpcRepository.createRepo());
         }
         return instance;
     }
@@ -85,7 +87,6 @@ public class ConversationManager {
         List<Line> start = new ArrayList<>();
         int i = 0;
         for (JsonElement entry : conversation) {
-            JsonObject details = entry.getAsJsonObject();
             start.add(getLine(i++, conversation));
         }
         lines.put(npc, start);
@@ -109,37 +110,44 @@ public class ConversationManager {
     }
 
     public void startConversation(NPC npc, Player player) throws DeathException {
-        List<Line> conversation = null;
-        //Workaround as <code>lines.get(npc)</code> is not working.
-        Iterator it = lines.entrySet().iterator();
-        while (it.hasNext()) {
-            @SuppressWarnings("unchecked")
-            Map.Entry<NPC, List<Line>> entry = (Map.Entry<NPC, List<Line>>) it.next();
-            if (entry.getKey().equals(npc)) {
-                conversation = entry.getValue();
-            }
-            it.remove();
-        }
+        List<Line> conversation = findConversationLines(npc);
+
         if (conversation != null) {
-            Line start = null;
-            for (Line l : conversation) {
-                if ("".equals(l.getPlayerPrompt()) && 
-                            ConversationManager.matchesConditions(npc, player, l)) {
-                    start = l;
-                    break;
-                }
-            }
+            Line start = findStartingLine(conversation, npc, player);
+
             if (start != null) {
-                QueueProvider.offer(start.getText());
-                Line response = start.display(npc, player, conversation);
-                triggerAction(start, npc, player);
-                while (response != null) {
-                   QueueProvider.offer(response.getText());
-                   triggerAction(response, npc, player);
-                   Line temp_response = response.display(npc, player, conversation);
-                   response = temp_response;
-               }
+                processLine(start, npc, player, conversation);
             }
+        }
+    }
+
+    private List<Line> findConversationLines(NPC npc) {
+        for (Map.Entry<NPC, List<Line>> entry : lines.entrySet()) {
+            if (entry.getKey().equals(npc)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private Line findStartingLine(List<Line> conversation, NPC npc, Player player) {
+        for (Line l : conversation) {
+            if ("".equals(l.getPlayerPrompt()) && ConversationManager.matchesConditions(npc, player, l)) {
+                return l;
+            }
+        }
+        return null;
+    }
+
+    private void processLine(Line line, NPC npc, Player player, List<Line> conversation) throws DeathException {
+        QueueProvider.offer(line.getText());
+        Line response = line.display(npc, player, conversation);
+        triggerAction(line, npc, player);
+
+        while (response != null) {
+            QueueProvider.offer(response.getText());
+            triggerAction(response, npc, player);
+            response = response.display(npc, player, conversation);
         }
     }
 
