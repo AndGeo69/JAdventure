@@ -1,6 +1,5 @@
 package com.jadventure.game;
 
-import com.jadventure.game.repository.EncounteredNpcRepository;
 import com.jadventure.game.repository.ItemRepository;
 import com.jadventure.game.repository.LocationRepository;
 import com.jadventure.game.repository.NpcRepository;
@@ -24,6 +23,6 @@ public final class GameBeans {
     }
 
     public static NpcRepository getNpcRepository() {
-        return EncounteredNpcRepository.createRepo();
+        return NpcRepository.createRepo();
     }
 }
